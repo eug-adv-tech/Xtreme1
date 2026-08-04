@@ -1,23 +1,25 @@
 name: Release from config
 
-permissions:
-  contents: write
-
 on:
-  workflow_dispatch:
   push:
     branches:
       - main
     paths:
       - 'config.py'
-      - 'scripts/release_guard.py'
       - '.github/workflows/release.yml'
+      - 'scripts/release_guard.py'
+  workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
-  guard-and-release:
+  release:
+    name: Release from config
     runs-on: ubuntu-latest
+
     steps:
-      - name: Check out repository
+      - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
@@ -31,14 +33,20 @@ jobs:
         id: release_guard
         run: python scripts/release_guard.py
 
+<<<<<<< HEAD
       - name: Create or push release tag
         env:
           CONFIG_VERSION: ${{ steps.release_guard.outputs.config_version }}
         shell: bash
+=======
+      - name: Create Git Tag
+        id: create_tag
+        env:
+          CONFIG_VERSION: ${{ steps.release_guard.outputs.config_version }}
+>>>>>>> origin/main
         run: |
-          set -euo pipefail
-
           git fetch --tags origin
+<<<<<<< HEAD
           if git rev-parse -q --verify "refs/tags/${CONFIG_VERSION}" >/dev/null; then
             echo "Tag ${CONFIG_VERSION} already exists; nothing to create."
           else
@@ -65,4 +73,31 @@ jobs:
             gh release create "${CONFIG_VERSION}" \
               --title "Release ${CONFIG_VERSION}" \
               --notes "Automated release ${CONFIG_VERSION} based on config.py"
+=======
+          if git rev-parse "$CONFIG_VERSION" >/dev/null 2>&1; then
+            echo "Tag $CONFIG_VERSION already exists."
+          else
+            echo "Tag $CONFIG_VERSION does not exist. Creating and pushing..."
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git tag -a "$CONFIG_VERSION" -m "Release $CONFIG_VERSION"
+            git push origin "$CONFIG_VERSION"
+          fi
+
+      - name: Create or Update GitHub Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CONFIG_VERSION: ${{ steps.release_guard.outputs.config_version }}
+        run: |
+          if gh release view "$CONFIG_VERSION" >/dev/null 2>&1; then
+            echo "Release $CONFIG_VERSION already exists. Updating..."
+            gh release edit "$CONFIG_VERSION" \
+              --title "$CONFIG_VERSION" \
+              --notes "Automated release $CONFIG_VERSION based on config.py"
+          else
+            echo "Release $CONFIG_VERSION does not exist. Creating..."
+            gh release create "$CONFIG_VERSION" \
+              --title "$CONFIG_VERSION" \
+              --notes "Automated release $CONFIG_VERSION based on config.py"
+>>>>>>> origin/main
           fi
