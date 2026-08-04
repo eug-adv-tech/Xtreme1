@@ -28,44 +28,42 @@ jobs:
           python-version: '3.11'
 
       - name: Run release guard
+        id: release_guard
         run: python scripts/release_guard.py
-
-      - name: Extract release version
-        id: release
-        shell: bash
-        run: |
-          python - <<'PY' >> "$GITHUB_OUTPUT"
-          import config
-          print(f"version={config.CONFIG_VERSION}")
-          PY
 
       - name: Create or push release tag
         env:
-          RELEASE_VERSION: ${{ steps.release.outputs.version }}
+          CONFIG_VERSION: ${{ steps.release_guard.outputs.config_version }}
         shell: bash
         run: |
           set -euo pipefail
 
           git fetch --tags origin
-          if git rev-parse -q --verify "refs/tags/${RELEASE_VERSION}" >/dev/null; then
-            echo "Tag ${RELEASE_VERSION} already exists; nothing to create."
+          if git rev-parse -q --verify "refs/tags/${CONFIG_VERSION}" >/dev/null; then
+            echo "Tag ${CONFIG_VERSION} already exists; nothing to create."
           else
-            git tag "${RELEASE_VERSION}"
-            git push origin "${RELEASE_VERSION}"
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git tag -a "${CONFIG_VERSION}" -m "Release ${CONFIG_VERSION}"
+            git push origin "${CONFIG_VERSION}"
           fi
 
-      - name: Create GitHub release
+      - name: Create or update GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
-          RELEASE_VERSION: ${{ steps.release.outputs.version }}
+          CONFIG_VERSION: ${{ steps.release_guard.outputs.config_version }}
         shell: bash
         run: |
           set -euo pipefail
 
-          if gh release view "${RELEASE_VERSION}" >/dev/null 2>&1; then
-            echo "Release ${RELEASE_VERSION} already exists; skipping."
+          if gh release view "${CONFIG_VERSION}" >/dev/null 2>&1; then
+            echo "Release ${CONFIG_VERSION} already exists; updating."
+            gh release edit "${CONFIG_VERSION}" \
+              --title "Release ${CONFIG_VERSION}" \
+              --notes "Automated release ${CONFIG_VERSION} based on config.py"
           else
-            gh release create "${RELEASE_VERSION}" \
-              --title "Release ${RELEASE_VERSION}" \
-              --generate-notes
+            echo "Release ${CONFIG_VERSION} does not exist; creating."
+            gh release create "${CONFIG_VERSION}" \
+              --title "Release ${CONFIG_VERSION}" \
+              --notes "Automated release ${CONFIG_VERSION} based on config.py"
           fi

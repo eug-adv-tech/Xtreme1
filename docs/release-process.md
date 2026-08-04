@@ -22,8 +22,8 @@ In `config.py`:
 1. Runs `scripts/release_guard.py`
 2. Extracts release constants from `config.py`
 3. Ensures policy coincidence is correct
-4. Creates and pushes git tag `CONFIG_VERSION` when it is missing
-5. Creates/updates GitHub release for that tag
+4. Creates and pushes an annotated git tag `CONFIG_VERSION` when it is missing
+5. Creates or updates the GitHub release for that tag
 
 ## Operator checklist
 
