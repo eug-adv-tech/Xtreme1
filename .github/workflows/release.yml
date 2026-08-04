@@ -59,8 +59,7 @@ jobs:
           if gh release view "${CONFIG_VERSION}" >/dev/null 2>&1; then
             echo "Release ${CONFIG_VERSION} already exists; updating."
             gh release edit "${CONFIG_VERSION}" \
-              --title "Release ${CONFIG_VERSION}" \
-              --notes "Automated release ${CONFIG_VERSION} based on config.py"
+              --title "Release ${CONFIG_VERSION}"
           else
             echo "Release ${CONFIG_VERSION} does not exist; creating."
             gh release create "${CONFIG_VERSION}" \
