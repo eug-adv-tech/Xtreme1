@@ -51,7 +51,8 @@ def main() -> int:
                 handle.write(f"global_release_version={global_release_version}\n")
             print("Successfully wrote release parameters to GITHUB_OUTPUT.")
         except Exception as exc:  # pragma: no cover - CLI error path
-            print(f"Warning: Failed to write to GITHUB_OUTPUT: {exc}", file=sys.stderr)
+            print(f"Error: Failed to write to GITHUB_OUTPUT: {exc}", file=sys.stderr)
+            return 1
 
     return 0
 
