@@ -1,22 +1,28 @@
 name: Release from config
 
-permissions:
-  contents: read
-
 on:
-  workflow_dispatch:
   push:
+    branches:
+      - main
     paths:
       - 'config.py'
-      - 'scripts/release_guard.py'
       - '.github/workflows/release.yml'
+      - 'scripts/release_guard.py'
+  workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
-  guard-and-release:
+  release:
+    name: Release from config
     runs-on: ubuntu-latest
+
     steps:
-      - name: Check out repository
+      - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -24,4 +30,39 @@ jobs:
           python-version: '3.11'
 
       - name: Run release guard
+        id: release_guard
         run: python scripts/release_guard.py
+
+      - name: Create Git Tag
+        id: create_tag
+        env:
+          CONFIG_VERSION: ${{ steps.release_guard.outputs.config_version }}
+        run: |
+          git fetch --tags origin
+          if git rev-parse "$CONFIG_VERSION" >/dev/null 2>&1; then
+            echo "Tag $CONFIG_VERSION already exists."
+          else
+            echo "Tag $CONFIG_VERSION does not exist. Creating and pushing..."
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git tag -a "$CONFIG_VERSION" -m "Release $CONFIG_VERSION"
+            git push origin "$CONFIG_VERSION"
+          fi
+
+      - name: Create or Update GitHub Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CONFIG_VERSION: ${{ steps.release_guard.outputs.config_version }}
+        run: |
+          if gh release view "$CONFIG_VERSION" >/dev/null 2>&1; then
+            echo "Release $CONFIG_VERSION already exists. Updating..."
+            gh release edit "$CONFIG_VERSION" \
+              --title "$CONFIG_VERSION" \
+              --notes "Automated release $CONFIG_VERSION based on config.py"
+          else
+            echo "Release $CONFIG_VERSION does not exist. Creating..."
+            gh release create "$CONFIG_VERSION" \
+              --title "$CONFIG_VERSION" \
+              --notes "Automated release $CONFIG_VERSION based on config.py"
+          fi
+
