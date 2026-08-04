@@ -4,6 +4,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from dataclasses import replace
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -52,6 +53,28 @@ class ReleaseGuardTests(unittest.TestCase):
         os.environ["GIT_TAG"] = "v1.0.1"
         with self.assertRaises(ValueError):
             config.validate_config()
+
+    def test_validate_config_rejects_non_boolean_release_policy(self) -> None:
+        original_value = config.RELEASE_COINCIDENCE_REQUIRED
+        try:
+            config.RELEASE_COINCIDENCE_REQUIRED = "yes"
+            with self.assertRaises(ValueError):
+                config.validate_config()
+        finally:
+            config.RELEASE_COINCIDENCE_REQUIRED = original_value
+
+    def test_validate_config_rejects_invalid_compliance_tag(self) -> None:
+        original_nodes = config.NODE_WALLETS
+        try:
+            invalid_nodes = [
+                replace(node, compliance_tag="invalid-tag") if index == 0 else node
+                for index, node in enumerate(original_nodes)
+            ]
+            config.NODE_WALLETS = invalid_nodes
+            with self.assertRaises(ValueError):
+                config.validate_config()
+        finally:
+            config.NODE_WALLETS = original_nodes
 
     def test_release_guard_writes_outputs(self) -> None:
         with tempfile.TemporaryDirectory() as tempdir:
