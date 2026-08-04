@@ -1,5 +1,8 @@
 name: Release from config
 
+permissions:
+  contents: read
+
 on:
   workflow_dispatch:
   push:
