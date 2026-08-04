@@ -27,12 +27,11 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
+          python-version: '3.11'
 
       - name: Run release guard
         id: release_guard
-        run: |
-          python scripts/release_guard.py
+        run: python scripts/release_guard.py
 
       - name: Create Git Tag
         id: create_tag
@@ -55,7 +54,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CONFIG_VERSION: ${{ steps.release_guard.outputs.config_version }}
         run: |
-          # Check if the release already exists
           if gh release view "$CONFIG_VERSION" >/dev/null 2>&1; then
             echo "Release $CONFIG_VERSION already exists. Updating..."
             gh release edit "$CONFIG_VERSION" \
@@ -67,3 +65,4 @@ jobs:
               --title "$CONFIG_VERSION" \
               --notes "Automated release $CONFIG_VERSION based on config.py"
           fi
+
