@@ -16,6 +16,7 @@ In `config.py`:
 - `GLOBAL_RELEASE_VERSION` must equal `CONFIG_VERSION` without leading `v`
 - Per-node `release_tag` and `release_version` must match globals
 - Cluster must validate at exactly 70 nodes and each wallet label must follow the expected `asi-smart-node-XX` pattern
+- The guard now validates string/boolean release-policy inputs and checks each node wallet's compliance tag shape before a release proceeds
 - The guard also exports release metadata to `GITHUB_OUTPUT` for downstream workflow steps
 
 ## What the workflow does
