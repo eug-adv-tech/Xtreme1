@@ -1,0 +1,24 @@
+name: Release from config
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'config.py'
+      - 'scripts/release_guard.py'
+      - '.github/workflows/release.yml'
+
+jobs:
+  guard-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Run release guard
+        run: python scripts/release_guard.py
