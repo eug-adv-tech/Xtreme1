@@ -98,6 +98,39 @@ def _build_default_nodes() -> List[NodeWalletConfig]:
 
 NODE_WALLETS: List[NodeWalletConfig] = _build_default_nodes()
 
+def _validate_release_policy() -> None:
+    config_version = str(CONFIG_VERSION).strip()
+    global_release_tag = str(GLOBAL_RELEASE_TAG).strip()
+    global_release_version = str(GLOBAL_RELEASE_VERSION).strip()
+
+    if not config_version:
+        raise ValueError("CONFIG_VERSION must be a non-empty string")
+    if not CONFIG_VERSION_PATTERN.match(config_version):
+        raise ValueError(
+            f"CONFIG_VERSION must match {CONFIG_VERSION_PATTERN.pattern!r}, got {config_version!r}"
+        )
+
+    if not global_release_tag:
+        raise ValueError("GLOBAL_RELEASE_TAG must be a non-empty string")
+    if not global_release_version:
+        raise ValueError("GLOBAL_RELEASE_VERSION must be a non-empty string")
+
+    expected_tag = f"release-{config_version}"
+    if global_release_tag != expected_tag:
+        raise ValueError(
+            f"GLOBAL_RELEASE_TAG mismatch: expected {expected_tag}, got {global_release_tag}"
+        )
+
+    expected_release_version = config_version[1:] if config_version.startswith("v") else config_version
+    if not RELEASE_VERSION_PATTERN.match(expected_release_version):
+        raise ValueError(
+            f"Computed release version must match {RELEASE_VERSION_PATTERN.pattern!r}, got {expected_release_version!r}"
+        )
+    if global_release_version != expected_release_version:
+        raise ValueError(
+            f"GLOBAL_RELEASE_VERSION mismatch: expected {expected_release_version}, got {global_release_version}"
+        )
+
 def _require_string(value: object, field_name: str) -> str:
     if not isinstance(value, str):
         raise ValueError(f"{field_name} must be a string, got {value!r}")
