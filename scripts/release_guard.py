@@ -34,17 +34,11 @@ def main() -> int:
         print(f"Release guard failed: {exc}", file=sys.stderr)
         return 1
 
-<<<<<<< HEAD
-    config_version = str(getattr(config, "CONFIG_VERSION", "")).strip()
-    global_release_tag = str(getattr(config, "GLOBAL_RELEASE_TAG", "")).strip()
-    global_release_version = str(getattr(config, "GLOBAL_RELEASE_VERSION", "")).strip()
-=======
     summary = config.get_release_summary()
 
     config_version = str(summary.get("config_version", "")).strip()
     global_release_tag = str(summary.get("global_release_tag", "")).strip()
     global_release_version = str(summary.get("global_release_version", "")).strip()
->>>>>>> origin/main
 
     if not config_version:
         print("Error: CONFIG_VERSION is not defined or empty in config.py", file=sys.stderr)
@@ -62,27 +56,13 @@ def main() -> int:
     print(f"CONFIG_VERSION: {config_version}")
     print(f"GLOBAL_RELEASE_TAG: {global_release_tag}")
     print(f"GLOBAL_RELEASE_VERSION: {global_release_version}")
-<<<<<<< HEAD
-
-    github_output = os.getenv("GITHUB_OUTPUT")
-    if github_output:
-        try:
-            with Path(github_output).open("a", encoding="utf-8") as handle:
-                handle.write(f"config_version={config_version}\n")
-                handle.write(f"global_release_tag={global_release_tag}\n")
-                handle.write(f"global_release_version={global_release_version}\n")
-            print("Successfully wrote release parameters to GITHUB_OUTPUT.")
-        except Exception as exc:  # pragma: no cover - CLI error path
-            print(f"Error: Failed to write to GITHUB_OUTPUT: {exc}", file=sys.stderr)
-            return 1
-=======
     print(f"CLUSTER_SIZE: {summary.get('cluster_size')}")
 
     try:
         _write_github_output(summary)
     except Exception as exc:  # pragma: no cover - CLI error path
-        print(f"Warning: Failed to write to GITHUB_OUTPUT: {exc}", file=sys.stderr)
->>>>>>> origin/main
+        print(f"Error: Failed to write to GITHUB_OUTPUT: {exc}", file=sys.stderr)
+        return 1
 
     return 0
 

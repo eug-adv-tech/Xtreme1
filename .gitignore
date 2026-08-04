@@ -11,5 +11,3 @@ __pycache__/
 
 .kitchen/
 .kitchen.local.yml
-__pycache__/
-*.pyc
