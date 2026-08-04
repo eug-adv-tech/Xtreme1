@@ -61,7 +61,8 @@ def main() -> int:
     try:
         _write_github_output(summary)
     except Exception as exc:  # pragma: no cover - CLI error path
-        print(f"Warning: Failed to write to GITHUB_OUTPUT: {exc}", file=sys.stderr)
+        print(f"Error: Failed to write to GITHUB_OUTPUT: {exc}", file=sys.stderr)
+        return 1
 
     return 0
 
