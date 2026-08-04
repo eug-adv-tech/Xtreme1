@@ -6,6 +6,8 @@ permissions:
 on:
   workflow_dispatch:
   push:
+    branches:
+      - main
     paths:
       - 'config.py'
       - 'scripts/release_guard.py'
@@ -50,4 +52,20 @@ jobs:
           else
             git tag "${RELEASE_VERSION}"
             git push origin "${RELEASE_VERSION}"
+          fi
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_VERSION: ${{ steps.release.outputs.version }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if gh release view "${RELEASE_VERSION}" >/dev/null 2>&1; then
+            echo "Release ${RELEASE_VERSION} already exists; skipping."
+          else
+            gh release create "${RELEASE_VERSION}" \
+              --title "Release ${RELEASE_VERSION}" \
+              --generate-notes
           fi
