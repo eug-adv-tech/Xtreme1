@@ -5,7 +5,9 @@
 bin/*
 .bundle/*
 
+# Python
+__pycache__/
+*.py[cod]
+
 .kitchen/
 .kitchen.local.yml
-__pycache__/
-*.pyc
