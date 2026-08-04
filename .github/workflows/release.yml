@@ -38,6 +38,11 @@ jobs:
         run: |
           set -euo pipefail
 
+          if [[ -z "${CONFIG_VERSION:-}" ]]; then
+            echo "Release guard did not provide a configuration version." >&2
+            exit 1
+          fi
+
           git fetch --tags origin
           if git rev-parse -q --verify "refs/tags/${CONFIG_VERSION}" >/dev/null; then
             echo "Tag ${CONFIG_VERSION} already exists; nothing to create."
