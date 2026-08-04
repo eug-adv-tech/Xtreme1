@@ -16,7 +16,7 @@ from __future__ import annotations
 import os
 import re
 from dataclasses import dataclass
-from typing import List
+from typing import Dict, List
 
 # -----------------------------
 # Global release/compliance policy
@@ -34,6 +34,10 @@ CLUSTER_SIZE = 70
 # Compliance
 COMPLIANCE_TAG_PREFIX = "SOL-CMP"
 COMPLIANCE_TAG_FORMAT = re.compile(r"^SOL-CMP-[A-Z0-9]{8}$")
+
+# Versioning and release validation patterns
+CONFIG_VERSION_PATTERN = re.compile(r"^v\d+\.\d+\.\d+$")
+RELEASE_VERSION_PATTERN = re.compile(r"^\d+\.\d+\.\d+$")
 
 # Solana defaults
 SOLANA_CLUSTER = "mainnet-beta"
@@ -94,21 +98,55 @@ def _build_default_nodes() -> List[NodeWalletConfig]:
 
 NODE_WALLETS: List[NodeWalletConfig] = _build_default_nodes()
 
-def _validate_release_policy():
-    expected_tag = f"release-{CONFIG_VERSION}"
-    if GLOBAL_RELEASE_TAG != expected_tag:
+def _validate_release_policy() -> None:
+    config_version = str(CONFIG_VERSION).strip()
+    global_release_tag = str(GLOBAL_RELEASE_TAG).strip()
+    global_release_version = str(GLOBAL_RELEASE_VERSION).strip()
+
+    if not config_version:
+        raise ValueError("CONFIG_VERSION must be a non-empty string")
+    if not CONFIG_VERSION_PATTERN.match(config_version):
         raise ValueError(
-            f"GLOBAL_RELEASE_TAG mismatch: expected {expected_tag}, got {GLOBAL_RELEASE_TAG}"
+            f"CONFIG_VERSION must match {CONFIG_VERSION_PATTERN.pattern!r}, got {config_version!r}"
         )
 
-    expected_release_version = CONFIG_VERSION[1:] if CONFIG_VERSION.startswith("v") else CONFIG_VERSION
-    if GLOBAL_RELEASE_VERSION != expected_release_version:
+    if not global_release_tag:
+        raise ValueError("GLOBAL_RELEASE_TAG must be a non-empty string")
+    if not global_release_version:
+        raise ValueError("GLOBAL_RELEASE_VERSION must be a non-empty string")
+
+    expected_tag = f"release-{config_version}"
+    if global_release_tag != expected_tag:
         raise ValueError(
-            f"GLOBAL_RELEASE_VERSION mismatch: expected {expected_release_version}, got {GLOBAL_RELEASE_VERSION}"
+            f"GLOBAL_RELEASE_TAG mismatch: expected {expected_tag}, got {global_release_tag}"
         )
+
+    expected_release_version = config_version[1:] if config_version.startswith("v") else config_version
+    if not RELEASE_VERSION_PATTERN.match(expected_release_version):
+        raise ValueError(
+            f"Computed release version must match {RELEASE_VERSION_PATTERN.pattern!r}, got {expected_release_version!r}"
+        )
+    if global_release_version != expected_release_version:
+        raise ValueError(
+            f"GLOBAL_RELEASE_VERSION mismatch: expected {expected_release_version}, got {global_release_version}"
+        )
+
+
+def get_release_summary() -> Dict[str, object]:
+    return {
+        "config_version": str(CONFIG_VERSION).strip(),
+        "global_release_tag": str(GLOBAL_RELEASE_TAG).strip(),
+        "global_release_version": str(GLOBAL_RELEASE_VERSION).strip(),
+        "cluster_size": CLUSTER_SIZE,
+        "compliance_tag_prefix": COMPLIANCE_TAG_PREFIX,
+    }
+
 
 def validate_config() -> None:
     _validate_release_policy()
+
+    if not isinstance(CLUSTER_SIZE, int) or CLUSTER_SIZE <= 0:
+        raise ValueError(f"CLUSTER_SIZE must be a positive integer, got {CLUSTER_SIZE!r}")
 
     if len(NODE_WALLETS) != CLUSTER_SIZE:
         raise ValueError(f"Cluster size mismatch: expected {CLUSTER_SIZE}, got {len(NODE_WALLETS)}")
@@ -116,10 +154,16 @@ def validate_config() -> None:
     seen_ids = set()
     seen_labels = set()
     for node in NODE_WALLETS:
+        if not isinstance(node.node_id, int) or node.node_id <= 0:
+            raise ValueError(f"Node has invalid node_id: {node.node_id!r}")
         if node.node_id in seen_ids:
             raise ValueError(f"Duplicate node_id detected: {node.node_id}")
         if node.wallet_label in seen_labels:
             raise ValueError(f"Duplicate wallet_label detected: {node.wallet_label}")
+        if node.wallet_label != f"asi-smart-node-{node.node_id:02d}":
+            raise ValueError(f"Node {node.node_id} invalid wallet_label: {node.wallet_label}")
+        if not isinstance(node.enabled, bool):
+            raise ValueError(f"Node {node.node_id} invalid enabled flag: {node.enabled!r}")
         seen_ids.add(node.node_id)
         seen_labels.add(node.wallet_label)
 
@@ -145,4 +189,7 @@ def validate_config() -> None:
         if runtime_tag and runtime_tag != CONFIG_VERSION:
             raise ValueError(f"CONFIG_VERSION ({CONFIG_VERSION}) != GIT_TAG ({runtime_tag})")
 
-validate_config()
+
+if __name__ == "__main__":
+    validate_config()
+    print("Configuration validation passed")
