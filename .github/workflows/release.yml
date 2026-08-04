@@ -65,4 +65,3 @@ jobs:
               --title "$CONFIG_VERSION" \
               --notes "Automated release $CONFIG_VERSION based on config.py"
           fi
-
