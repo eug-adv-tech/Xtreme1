@@ -27,7 +27,6 @@ def _write_github_output(summary: dict[str, object]) -> None:
     output_path.parent.mkdir(parents=True, exist_ok=True)
     with output_path.open("a", encoding="utf-8") as handle:
         for key, value in summary.items():
-            handle.write(f"{key}={value}\n")
             handle.write(f"{key}={_escape_github_output_value(value)}\n")
     print("Successfully wrote release parameters to GITHUB_OUTPUT.")
 
@@ -74,4 +73,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-
