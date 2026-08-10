@@ -95,6 +95,10 @@ class ReleaseGuardTests(unittest.TestCase):
             self.assertIn("global_release_tag=release-v1.0.0", contents)
             self.assertIn("global_release_version=1.0.0", contents)
             self.assertIn("cluster_size=70", contents)
+            self.assertEqual(contents.count("config_version=v1.0.0"), 1)
+            self.assertEqual(contents.count("global_release_tag=release-v1.0.0"), 1)
+            self.assertEqual(contents.count("global_release_version=1.0.0"), 1)
+            self.assertEqual(contents.count("cluster_size=70"), 1)
 
 
 if __name__ == "__main__":
