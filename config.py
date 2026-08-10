@@ -131,6 +131,54 @@ def _validate_release_policy() -> None:
             f"GLOBAL_RELEASE_VERSION mismatch: expected {expected_release_version}, got {global_release_version}"
         )
 
+def _require_string(value: object, field_name: str) -> str:
+    if not isinstance(value, str):
+        raise ValueError(f"{field_name} must be a string, got {value!r}")
+
+    cleaned = value.strip()
+    if not cleaned:
+        raise ValueError(f"{field_name} must be a non-empty string")
+    return cleaned
+
+
+def _validate_release_policy() -> None:
+    config_version = _require_string(CONFIG_VERSION, "CONFIG_VERSION")
+    global_release_tag = _require_string(GLOBAL_RELEASE_TAG, "GLOBAL_RELEASE_TAG")
+    global_release_version = _require_string(GLOBAL_RELEASE_VERSION, "GLOBAL_RELEASE_VERSION")
+    compliance_prefix = _require_string(COMPLIANCE_TAG_PREFIX, "COMPLIANCE_TAG_PREFIX")
+
+    if not isinstance(RELEASE_COINCIDENCE_REQUIRED, bool):
+        raise ValueError(f"RELEASE_COINCIDENCE_REQUIRED must be a boolean, got {RELEASE_COINCIDENCE_REQUIRED!r}")
+    if not isinstance(GIT_TAG_COINCIDENCE_REQUIRED, bool):
+        raise ValueError(f"GIT_TAG_COINCIDENCE_REQUIRED must be a boolean, got {GIT_TAG_COINCIDENCE_REQUIRED!r}")
+
+    if not CONFIG_VERSION_PATTERN.match(config_version):
+        raise ValueError(
+            f"CONFIG_VERSION must match {CONFIG_VERSION_PATTERN.pattern!r}, got {config_version!r}"
+        )
+
+    expected_tag = f"release-{config_version}"
+    if global_release_tag != expected_tag:
+        raise ValueError(
+            f"GLOBAL_RELEASE_TAG mismatch: expected {expected_tag}, got {global_release_tag}"
+        )
+
+    expected_release_version = config_version[1:] if config_version.startswith("v") else config_version
+    if not RELEASE_VERSION_PATTERN.match(expected_release_version):
+        raise ValueError(
+            f"Computed release version must match {RELEASE_VERSION_PATTERN.pattern!r}, got {expected_release_version!r}"
+        )
+    if global_release_version != expected_release_version:
+        raise ValueError(
+            f"GLOBAL_RELEASE_VERSION mismatch: expected {expected_release_version}, got {global_release_version}"
+        )
+
+    sample_tag = f"{compliance_prefix}-00000000"
+    if not COMPLIANCE_TAG_FORMAT.fullmatch(sample_tag):
+        raise ValueError(
+            f"COMPLIANCE_TAG_FORMAT does not match COMPLIANCE_TAG_PREFIX {compliance_prefix!r}"
+        )
+
 
 def get_release_summary() -> Dict[str, object]:
     return {
@@ -148,16 +196,22 @@ def validate_config() -> None:
     if not isinstance(CLUSTER_SIZE, int) or CLUSTER_SIZE <= 0:
         raise ValueError(f"CLUSTER_SIZE must be a positive integer, got {CLUSTER_SIZE!r}")
 
+    if not isinstance(NODE_WALLETS, list):
+        raise ValueError(f"NODE_WALLETS must be a list, got {type(NODE_WALLETS)!r}")
     if len(NODE_WALLETS) != CLUSTER_SIZE:
         raise ValueError(f"Cluster size mismatch: expected {CLUSTER_SIZE}, got {len(NODE_WALLETS)}")
 
     seen_ids = set()
     seen_labels = set()
     for node in NODE_WALLETS:
+        if not isinstance(node, NodeWalletConfig):
+            raise ValueError(f"Node entry must be a NodeWalletConfig, got {type(node)!r}")
         if not isinstance(node.node_id, int) or node.node_id <= 0:
             raise ValueError(f"Node has invalid node_id: {node.node_id!r}")
         if node.node_id in seen_ids:
             raise ValueError(f"Duplicate node_id detected: {node.node_id}")
+        if not isinstance(node.wallet_label, str) or not node.wallet_label.strip():
+            raise ValueError(f"Node {node.node_id} invalid wallet_label: {node.wallet_label!r}")
         if node.wallet_label in seen_labels:
             raise ValueError(f"Duplicate wallet_label detected: {node.wallet_label}")
         if node.wallet_label != f"asi-smart-node-{node.node_id:02d}":
@@ -175,10 +229,16 @@ def validate_config() -> None:
             if not _looks_like_base58_pubkey(key):
                 raise ValueError(f"Node {node.node_id} invalid {field_name}: {key!r}")
 
+        if not isinstance(node.compliance_tag, str) or not node.compliance_tag.strip():
+            raise ValueError(f"Node {node.node_id} invalid compliance_tag: {node.compliance_tag!r}")
         if not COMPLIANCE_TAG_FORMAT.match(node.compliance_tag):
             raise ValueError(f"Node {node.node_id} invalid compliance_tag: {node.compliance_tag}")
 
         if RELEASE_COINCIDENCE_REQUIRED:
+            if not isinstance(node.release_tag, str) or not node.release_tag.strip():
+                raise ValueError(f"Node {node.node_id} invalid release_tag: {node.release_tag!r}")
+            if not isinstance(node.release_version, str) or not node.release_version.strip():
+                raise ValueError(f"Node {node.node_id} invalid release_version: {node.release_version!r}")
             if node.release_tag != GLOBAL_RELEASE_TAG:
                 raise ValueError(f"Node {node.node_id} release_tag mismatch")
             if node.release_version != GLOBAL_RELEASE_VERSION:
