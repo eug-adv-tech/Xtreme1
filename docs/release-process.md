@@ -16,6 +16,7 @@ In `config.py`:
 - `GLOBAL_RELEASE_VERSION` must equal `CONFIG_VERSION` without leading `v`
 - Per-node `release_tag` and `release_version` must match globals
 - Cluster must validate at exactly 70 nodes and each wallet label must follow the expected `asi-smart-node-XX` pattern
+- The guard now validates string/boolean release-policy inputs and checks each node wallet's compliance tag shape before a release proceeds
 - The guard also exports release metadata to `GITHUB_OUTPUT` for downstream workflow steps
 
 ## What the workflow does
@@ -23,8 +24,8 @@ In `config.py`:
 1. Runs `scripts/release_guard.py`
 2. Extracts release constants from `config.py`
 3. Ensures policy coincidence is correct
-4. Creates git tag `CONFIG_VERSION` if missing
-5. Creates/updates GitHub release for that tag
+4. Creates and pushes an annotated git tag `CONFIG_VERSION` when it is missing
+5. Creates or updates the GitHub release for that tag
 
 ## Operator checklist
 
