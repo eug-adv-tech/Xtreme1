@@ -96,6 +96,19 @@ class ReleaseGuardTests(unittest.TestCase):
             self.assertIn("global_release_version=1.0.0", contents)
             self.assertIn("cluster_size=70", contents)
 
+    def test_release_guard_rejects_path_traversal_github_output(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            os.environ["GITHUB_OUTPUT"] = str(Path(tempdir) / ".." / "github-output.txt")
+            completed = subprocess.run(
+                [sys.executable, str(REPO_ROOT / "scripts" / "release_guard.py")],
+                cwd=REPO_ROOT,
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+            self.assertNotEqual(completed.returncode, 0)
+            self.assertIn("GITHUB_OUTPUT path must not contain parent directory traversal", completed.stderr)
+
 
 if __name__ == "__main__":
     unittest.main()
