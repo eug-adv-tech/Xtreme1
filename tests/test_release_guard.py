@@ -91,14 +91,16 @@ class ReleaseGuardTests(unittest.TestCase):
             self.assertIn("Release guard passed for v1.0.0", completed.stdout)
             self.assertTrue(output_path.exists())
             contents = output_path.read_text(encoding="utf-8")
-            self.assertIn("config_version=v1.0.0", contents)
-            self.assertIn("global_release_tag=release-v1.0.0", contents)
-            self.assertIn("global_release_version=1.0.0", contents)
-            self.assertIn("cluster_size=70", contents)
-            self.assertEqual(contents.count("config_version=v1.0.0"), 1)
-            self.assertEqual(contents.count("global_release_tag=release-v1.0.0"), 1)
-            self.assertEqual(contents.count("global_release_version=1.0.0"), 1)
-            self.assertEqual(contents.count("cluster_size=70"), 1)
+            pairs: dict[str, str] = {}
+            for line in contents.splitlines():
+                if "=" in line:
+                    key, _, value = line.partition("=")
+                    self.assertNotIn(key, pairs, f"Duplicate key in GITHUB_OUTPUT: {key!r}")
+                    pairs[key] = value
+            self.assertEqual(pairs.get("config_version"), "v1.0.0")
+            self.assertEqual(pairs.get("global_release_tag"), "release-v1.0.0")
+            self.assertEqual(pairs.get("global_release_version"), "1.0.0")
+            self.assertEqual(pairs.get("cluster_size"), "70")
 
 
 if __name__ == "__main__":
