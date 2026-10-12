@@ -5,6 +5,8 @@ Security:
 - No private keys in source control.
 - Public keys only.
 - Runtime validation fails fast on policy drift.
+- Runtime Solana integrations may source SOLANA_PRIVATE_KEY, SOLANA_RPC_URL,
+  SOLANA_WS_URL, and optional SOLANA_PROGRAM_ID from the environment.
 
 Release coincidence policy:
 - CONFIG_VERSION must align with GLOBAL_RELEASE_TAG/GLOBAL_RELEASE_VERSION.
@@ -43,6 +45,8 @@ RELEASE_VERSION_PATTERN = re.compile(r"^\d+\.\d+\.\d+$")
 SOLANA_CLUSTER = "mainnet-beta"
 SOLANA_RPC_URL = os.getenv("SOLANA_RPC_URL", "https://api.mainnet-beta.solana.com")
 SOLANA_WS_URL = os.getenv("SOLANA_WS_URL", "wss://api.mainnet-beta.solana.com")
+SOLANA_PRIVATE_KEY = os.getenv("SOLANA_PRIVATE_KEY")
+SOLANA_PROGRAM_ID = os.getenv("SOLANA_PROGRAM_ID")
 
 @dataclass(frozen=True)
 class NodeWalletConfig:
@@ -109,6 +113,17 @@ def _require_string(value: object, field_name: str) -> str:
     return cleaned
 
 
+def _optional_string(value: object, field_name: str) -> str | None:
+    if value is None:
+        return None
+
+    if not isinstance(value, str):
+        raise ValueError(f"{field_name} must be a string, got {value!r}")
+
+    cleaned = value.strip()
+    return cleaned or None
+
+
 def _validate_release_policy() -> None:
     config_version = _require_string(CONFIG_VERSION, "CONFIG_VERSION")
     global_release_tag = _require_string(GLOBAL_RELEASE_TAG, "GLOBAL_RELEASE_TAG")
@@ -158,8 +173,23 @@ def get_release_summary() -> Dict[str, object]:
     }
 
 
+def get_solana_runtime_summary() -> Dict[str, object]:
+    program_id = _optional_string(SOLANA_PROGRAM_ID, "SOLANA_PROGRAM_ID")
+    if program_id and not _looks_like_base58_pubkey(program_id):
+        raise ValueError(f"SOLANA_PROGRAM_ID must be a base58 public key, got {program_id!r}")
+
+    return {
+        "solana_cluster": _require_string(SOLANA_CLUSTER, "SOLANA_CLUSTER"),
+        "solana_rpc_url": _require_string(SOLANA_RPC_URL, "SOLANA_RPC_URL"),
+        "solana_ws_url": _require_string(SOLANA_WS_URL, "SOLANA_WS_URL"),
+        "solana_program_id": program_id,
+        "solana_private_key_configured": _optional_string(SOLANA_PRIVATE_KEY, "SOLANA_PRIVATE_KEY") is not None,
+    }
+
+
 def validate_config() -> None:
     _validate_release_policy()
+    get_solana_runtime_summary()
 
     if not isinstance(CLUSTER_SIZE, int) or CLUSTER_SIZE <= 0:
         raise ValueError(f"CLUSTER_SIZE must be a positive integer, got {CLUSTER_SIZE!r}")

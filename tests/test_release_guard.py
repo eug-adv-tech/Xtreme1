@@ -18,6 +18,10 @@ class ReleaseGuardTests(unittest.TestCase):
     def setUp(self) -> None:
         self._original_git_tag = os.environ.get("GIT_TAG")
         self._original_github_output = os.environ.get("GITHUB_OUTPUT")
+        self._original_solana_private_key = os.environ.get("SOLANA_PRIVATE_KEY")
+        self._original_solana_program_id = os.environ.get("SOLANA_PROGRAM_ID")
+        self._original_solana_rpc_url = os.environ.get("SOLANA_RPC_URL")
+        self._original_solana_ws_url = os.environ.get("SOLANA_WS_URL")
 
     def tearDown(self) -> None:
         if self._original_git_tag is None:
@@ -30,15 +34,45 @@ class ReleaseGuardTests(unittest.TestCase):
         else:
             os.environ["GITHUB_OUTPUT"] = self._original_github_output
 
+        for key, original_value in (
+            ("SOLANA_PRIVATE_KEY", self._original_solana_private_key),
+            ("SOLANA_PROGRAM_ID", self._original_solana_program_id),
+            ("SOLANA_RPC_URL", self._original_solana_rpc_url),
+            ("SOLANA_WS_URL", self._original_solana_ws_url),
+        ):
+            if original_value is None:
+                os.environ.pop(key, None)
+            else:
+                os.environ[key] = original_value
+
         importlib.reload(config)
 
     def test_default_configuration_is_valid(self) -> None:
         config.validate_config()
         summary = config.get_release_summary()
+        solana_summary = config.get_solana_runtime_summary()
         self.assertEqual(summary["config_version"], "v1.0.0")
         self.assertEqual(summary["global_release_tag"], "release-v1.0.0")
         self.assertEqual(summary["global_release_version"], "1.0.0")
         self.assertEqual(summary["cluster_size"], 70)
+        self.assertEqual(solana_summary["solana_rpc_url"], "https://api.mainnet-beta.solana.com")
+        self.assertEqual(solana_summary["solana_ws_url"], "wss://api.mainnet-beta.solana.com")
+        self.assertIsNone(solana_summary["solana_program_id"])
+        self.assertFalse(solana_summary["solana_private_key_configured"])
+
+    def test_solana_runtime_summary_reads_environment_overrides(self) -> None:
+        os.environ["SOLANA_PRIVATE_KEY"] = "  private-key-material  "
+        os.environ["SOLANA_RPC_URL"] = "https://rpc.example.invalid"
+        os.environ["SOLANA_WS_URL"] = "wss://rpc.example.invalid"
+        os.environ["SOLANA_PROGRAM_ID"] = config._generate_placeholder_pubkey(9999)
+        importlib.reload(config)
+
+        summary = config.get_solana_runtime_summary()
+
+        self.assertEqual(summary["solana_rpc_url"], "https://rpc.example.invalid")
+        self.assertEqual(summary["solana_ws_url"], "wss://rpc.example.invalid")
+        self.assertEqual(summary["solana_program_id"], os.environ["SOLANA_PROGRAM_ID"])
+        self.assertTrue(summary["solana_private_key_configured"])
 
     def test_validate_config_rejects_release_tag_mismatch(self) -> None:
         original_tag = config.GLOBAL_RELEASE_TAG
@@ -75,6 +109,13 @@ class ReleaseGuardTests(unittest.TestCase):
                 config.validate_config()
         finally:
             config.NODE_WALLETS = original_nodes
+
+    def test_validate_config_rejects_invalid_solana_program_id(self) -> None:
+        os.environ["SOLANA_PROGRAM_ID"] = "invalid-program-id"
+        importlib.reload(config)
+
+        with self.assertRaises(ValueError):
+            config.validate_config()
 
     def test_release_guard_writes_outputs(self) -> None:
         with tempfile.TemporaryDirectory() as tempdir:
